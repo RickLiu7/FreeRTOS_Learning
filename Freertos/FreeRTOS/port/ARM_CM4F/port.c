@@ -74,7 +74,7 @@
 /* Scheduler includes. */
 #include "FreeRTOS.h"
 #include "task.h"
-
+#include "main.h"
 #ifndef __VFP_FP__
 	#error This port can only be used when the project options are configured to enable hardware floating point support.
 #endif
@@ -492,6 +492,9 @@ void xPortPendSVHandler( void )
 
 void xPortSysTickHandler( void )
 {
+#define TIMEDELAY 1000
+	static int endTick = 0;
+
 	/* The SysTick runs at the lowest interrupt priority, so when this interrupt
 	executes all interrupts must be unmasked.  There is therefore no need to
 	save and then restore the interrupt mask value as its value is already
@@ -505,6 +508,16 @@ void xPortSysTickHandler( void )
 			the PendSV interrupt.  Pend the PendSV interrupt. */
 			portNVIC_INT_CTRL_REG = portNVIC_PENDSVSET_BIT;
 		}
+
+		/****/
+		HAL_IncTick();
+
+		if (HAL_GetTick() > endTick)
+		{
+			endTick = HAL_GetTick() + TIMEDELAY;
+			HAL_GPIO_TogglePin(GPIOD, LED6_Pin);
+		}
+		/****/
 	}
 	portENABLE_INTERRUPTS();
 }

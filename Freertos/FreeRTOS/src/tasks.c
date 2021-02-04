@@ -2612,9 +2612,12 @@ BaseType_t xSwitchRequired = pdFALSE;
 		writer has not explicitly turned time slicing off. */
 		#if ( ( configUSE_PREEMPTION == 1 ) && ( configUSE_TIME_SLICING == 1 ) )
 		{
-			if( listCURRENT_LIST_LENGTH( &( pxReadyTasksLists[ pxCurrentTCB->uxPriority ] ) ) > ( UBaseType_t ) 1 )
+			if(pxCurrentTCB != NULL)
 			{
-				xSwitchRequired = pdTRUE;
+				if( listCURRENT_LIST_LENGTH( &( pxReadyTasksLists[ pxCurrentTCB->uxPriority ] ) ) > ( UBaseType_t ) 1 )
+				{
+					xSwitchRequired = pdTRUE;
+				}
 			}
 			else
 			{
