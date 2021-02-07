@@ -45,11 +45,34 @@
 
 /* USER CODE BEGIN PV */
 
+//任务句柄
+static TaskHandle_t AppTaskCreate_Handle;
+static TaskHandle_t LED_Task_Handle;
+
+//任务堆栈
+static StackType_t AppTaskCreate_Stack[128];
+static StackType_t LED_Task_Stack[128];
+
+// 任务控制块
+static StaticTask_t AppTaskCreate_TCB;
+static StaticTask_t LED_Task_TCB;
+
+
+// 空闲 和 定时任务堆栈
+static StackType_t Idle_Task_Stack[configMINIMAL_STACK_SIZE];
+static StackType_t Timer_Task_Stack[configTIMER_TASK_STACK_DEPTH];
+
+// 空闲 和 定时任务控制块
+static StaticTask_t Idle_Task_TCB;
+static StaticTask_t Timer_Task_TCB;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
+static void AppTaskCreate(void);/* 用于创建任务 */
+static void LED_Task(void* pvParameters);/* LED_Task 任务实现 */
 
 /* USER CODE END PFP */
 
@@ -87,7 +110,15 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-
+  AppTaskCreate_Handle = xTaskCreateStatic((TaskFunction_t )AppTaskCreate,
+                                            (const char* )"AppTaskCreate",//任务名称
+                                            (uint32_t )128, //任务堆栈大小
+                                            (void* )NULL,//传递给任务函数的参数
+                                            (UBaseType_t )3, //任务优先级
+                                            (StackType_t* )AppTaskCreate_Stack,
+                                            (StaticTask_t* )&AppTaskCreate_TCB);
+  
+  vTaskStartScheduler();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -146,6 +177,40 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+static void AppTaskCreate(void)
+{
+    taskENTER_CRITICAL(); //进入临界区
+    
+    LED_Task_Handle = xTaskCreateStatic((TaskFunction_t )LED_Task, //任务函数
+                                        (const char*)"LED_Task",//任务名称
+                                        (uint32_t)128, //任务堆栈大小
+                                        (void* )NULL, //传递给任务函数的参数
+                                        (UBaseType_t)4, //任务优先级
+                                        (StackType_t*)LED_Task_Stack,//任务堆栈
+                                        (StaticTask_t*)&LED_Task_TCB);//任务控制块
+    
+//  if (NULL != LED_Task_Handle) /* 创建成功 */
+//      printf("LED_Task 任务创建成功!\n");
+//  else
+//      printf("LED_Task 任务创建失败!\n");
+    
+    vTaskDelete(AppTaskCreate_Handle); //删除 AppTaskCreate 任务
+    
+    taskEXIT_CRITICAL(); //退出临界区
+}
+
+static void LED_Task(void* parameter)
+{
+    while (1)
+    {
+        HAL_GPIO_TogglePin(GPIOD, LED3_Pin);
+        vTaskDelay(500); /* 延时 500 个 tick */
+        
+        HAL_GPIO_TogglePin(GPIOD, LED3_Pin);
+        vTaskDelay(500); /* 延时 500 个 tick */
+    }
+}
 
 /* USER CODE END 4 */
 
