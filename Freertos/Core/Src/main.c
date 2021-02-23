@@ -25,6 +25,7 @@
 /* USER CODE BEGIN Includes */
 #include "FreeRTOS.h"
 #include "task.h"
+ #include "queue.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -44,27 +45,16 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+ QueueHandle_t Test_Queue = NULL;
+
+#define QUEUE_LEN 4 /* 队列的长度，最大可包含多少个消息 */
+#define QUEUE_SIZE 4 /* 队列中每个消息大小（字节） */
 
 //任务句柄
 static TaskHandle_t AppTaskCreate_Handle;
-static TaskHandle_t LED_Task_Handle;
 
-//任务堆栈
-static StackType_t AppTaskCreate_Stack[128];
-static StackType_t LED_Task_Stack[128];
-
-// 任务控制块
-static StaticTask_t AppTaskCreate_TCB;
-static StaticTask_t LED_Task_TCB;
-
-
-// 空闲 和 定时任务堆栈
-static StackType_t Idle_Task_Stack[configMINIMAL_STACK_SIZE];
-static StackType_t Timer_Task_Stack[configTIMER_TASK_STACK_DEPTH];
-
-// 空闲 和 定时任务控制块
-static StaticTask_t Idle_Task_TCB;
-static StaticTask_t Timer_Task_TCB;
+static TaskHandle_t Send_Task_Handle = NULL;
+static TaskHandle_t Receive_Task_Handle = NULL;
 
 /* USER CODE END PV */
 
@@ -72,7 +62,9 @@ static StaticTask_t Timer_Task_TCB;
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 static void AppTaskCreate(void);/* 用于创建任务 */
-static void LED_Task(void* pvParameters);/* LED_Task 任务实现 */
+
+static void Send_Task(void* pvParameters);/* Send_Task 任务实现 */
+static void Receive_Task(void* pvParameters);/* Receive_Task 任务实现 */
 
 /* USER CODE END PFP */
 
@@ -88,6 +80,8 @@ static void LED_Task(void* pvParameters);/* LED_Task 任务实现 */
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+
+	BaseType_t xReturn = pdPASS;/* 定义�?个创建信息返回�?�，默认�? pdPASS */
 
   /* USER CODE END 1 */
 
@@ -110,15 +104,29 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
-  AppTaskCreate_Handle = xTaskCreateStatic((TaskFunction_t )AppTaskCreate,
-                                            (const char* )"AppTaskCreate",//任务名称
-                                            (uint32_t )128, //任务堆栈大小
-                                            (void* )NULL,//传递给任务函数的参数
-                                            (UBaseType_t )3, //任务优先级
-                                            (StackType_t* )AppTaskCreate_Stack,
-                                            (StaticTask_t* )&AppTaskCreate_TCB);
+//  while(1)
+//  {
+//	  if (HAL_GPIO_ReadPin(Button_GPIO_Port, Button_Pin) == GPIO_PIN_SET)
+//	  {
+//		  HAL_GPIO_WritePin(GPIOD, LED4_Pin, GPIO_PIN_SET);
+//	  }
+//	  else
+//	  {
+//		  HAL_GPIO_WritePin(GPIOD, LED4_Pin, GPIO_PIN_RESET);
+//	  }
+//  }
+
+  xReturn = xTaskCreate((TaskFunction_t )AppTaskCreate,
+                        (const char* )"AppTaskCreate",//任务名称
+                        (uint32_t )128, //任务堆栈大小
+                        (void* )NULL,//传�?�给任务函数的参�?
+                        (UBaseType_t )1, //任务优先�?
+						(TaskHandle_t* )&AppTaskCreate_Handle);
   
-  vTaskStartScheduler();
+  if (pdPASS == xReturn)
+	  vTaskStartScheduler(); /* 启动任务，开启调�? */
+  else
+	  return -1;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -180,37 +188,88 @@ void SystemClock_Config(void)
 
 static void AppTaskCreate(void)
 {
-    taskENTER_CRITICAL(); //进入临界区
-    
-    LED_Task_Handle = xTaskCreateStatic((TaskFunction_t )LED_Task, //任务函数
-                                        (const char*)"LED_Task",//任务名称
-                                        (uint32_t)128, //任务堆栈大小
-                                        (void* )NULL, //传递给任务函数的参数
-                                        (UBaseType_t)4, //任务优先级
-                                        (StackType_t*)LED_Task_Stack,//任务堆栈
-                                        (StaticTask_t*)&LED_Task_TCB);//任务控制块
-    
-//  if (NULL != LED_Task_Handle) /* 创建成功 */
-//      printf("LED_Task 任务创建成功!\n");
-//  else
-//      printf("LED_Task 任务创建失败!\n");
-    
+	BaseType_t xReturn = pdPASS;/* 定义�?个创建信息返回�?�，默认�? pdPASS */
+
+    taskENTER_CRITICAL(); //进入临界�?
+
+    Test_Queue = xQueueCreate((UBaseType_t ) QUEUE_LEN,/* 消息队列的长度 */
+    		(UBaseType_t ) QUEUE_SIZE);/* 消息的大小 */
+
+    if (NULL == Test_Queue)
+    	while(1);
+
+    xReturn = xTaskCreate((TaskFunction_t )Receive_Task,/* 任务入口函数 */
+							(const char* )"Receive_Task",/* 任务名字 */
+    		(uint16_t )512, /* 任务栈大小 */
+			(void* )NULL, /* 任务入口函数参数 */
+			(UBaseType_t )2, /* 任务的优先级 */
+			(TaskHandle_t* )&Receive_Task_Handle);/*任务控制块指针*/
+
+    if (pdPASS != xReturn)
+    	while(1);
+
+    xReturn = xTaskCreate((TaskFunction_t )Send_Task,/* 任务入口函数 */
+							(const char* )"Receive_Task",/* 任务名字 */
+    		(uint16_t )512, /* 任务栈大小 */
+			(void* )NULL, /* 任务入口函数参数 */
+			(UBaseType_t )3, /* 任务的优先级 */
+			(TaskHandle_t* )&Send_Task_Handle);/*任务控制块指针*/
+
+    if (pdPASS != xReturn)
+        	while(1);
+
     vTaskDelete(AppTaskCreate_Handle); //删除 AppTaskCreate 任务
     
-    taskEXIT_CRITICAL(); //退出临界区
+    taskEXIT_CRITICAL(); //�?出临界区
 }
 
-static void LED_Task(void* parameter)
+static void Send_Task(void* parameter)
 {
-    while (1)
-    {
-        HAL_GPIO_TogglePin(GPIOD, LED3_Pin);
-        vTaskDelay(500); /* 延时 500 个 tick */
-        
-        HAL_GPIO_TogglePin(GPIOD, LED3_Pin);
-        vTaskDelay(500); /* 延时 500 个 tick */
-    }
+	BaseType_t xReturn = pdPASS;/* 定义一个创建信息返回值，默认为 pdPASS */
+	uint32_t send_data1 = 1;
+	uint32_t send_data2 = 2;
+
+	while (1)
+	{
+		if (HAL_GPIO_ReadPin(Button_GPIO_Port, Button_Pin) == GPIO_PIN_SET)
+		{
+			xReturn = xQueueSend( Test_Queue,&send_data1, 0);
+		}
+		else
+		{
+			xReturn = xQueueSend( Test_Queue,&send_data2, 0);
+		}
+
+		vTaskDelay(20);/* 延时 20 个 tick */
+
+	}
 }
+
+static void Receive_Task(void* parameter)
+{
+	BaseType_t xReturn = pdTRUE;/* 定义一个创建信息返回值，默认为 pdTRUE */
+	uint32_t r_queue; /* 定义一个接收消息的变量 */
+
+	while (1)
+	{
+		xReturn = xQueueReceive( Test_Queue, /* 消息队列的句柄 */
+								&r_queue, /* 接受的消息内容 */
+								portMAX_DELAY); /* 等待时间 一直等 */
+
+		if (xReturn == pdTRUE)
+		{
+			if (r_queue == 2)
+			{
+				HAL_GPIO_WritePin(GPIOD, LED4_Pin, GPIO_PIN_SET);
+			}
+			else
+			{
+				HAL_GPIO_WritePin(GPIOD, LED4_Pin, GPIO_PIN_RESET);
+			}
+		}
+	}
+}
+
 
 /* USER CODE END 4 */
 
