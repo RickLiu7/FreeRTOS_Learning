@@ -65,7 +65,7 @@ static void AppTaskCreate(void);/* 用于创建任务 */
 
 static void Send_Task(void* pvParameters);/* Send_Task 任务实现 */
 static void Receive_Task(void* pvParameters);/* Receive_Task 任务实现 */
-
+static void Receive_Task2(void* parameter);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -202,17 +202,27 @@ static void AppTaskCreate(void)
 							(const char* )"Receive_Task",/* 任务名字 */
     		(uint16_t )512, /* 任务栈大小 */
 			(void* )NULL, /* 任务入口函数参数 */
-			(UBaseType_t )2, /* 任务的优先级 */
+			(UBaseType_t )3, /* 任务的优先级 */
 			(TaskHandle_t* )&Receive_Task_Handle);/*任务控制块指针*/
 
     if (pdPASS != xReturn)
     	while(1);
 
+    xReturn = xTaskCreate((TaskFunction_t )Receive_Task2,/* 任务入口函数 */
+							(const char* )"Receive_Task2",/* 任务名字 */
+			(uint16_t )512, /* 任务栈大小 */
+			(void* )NULL, /* 任务入口函数参数 */
+			(UBaseType_t )2, /* 任务的优先级 */
+			(TaskHandle_t* )&Receive_Task_Handle);/*任务控制块指针*/
+
+	if (pdPASS != xReturn)
+		while(1);
+
     xReturn = xTaskCreate((TaskFunction_t )Send_Task,/* 任务入口函数 */
 							(const char* )"Receive_Task",/* 任务名字 */
     		(uint16_t )512, /* 任务栈大小 */
 			(void* )NULL, /* 任务入口函数参数 */
-			(UBaseType_t )3, /* 任务的优先级 */
+			(UBaseType_t )4, /* 任务的优先级 */
 			(TaskHandle_t* )&Send_Task_Handle);/*任务控制块指针*/
 
     if (pdPASS != xReturn)
@@ -258,7 +268,7 @@ static void Receive_Task(void* parameter)
 
 		if (xReturn == pdTRUE)
 		{
-			if (r_queue == 2)
+			if (r_queue == 1)
 			{
 				HAL_GPIO_WritePin(GPIOD, LED4_Pin, GPIO_PIN_SET);
 			}
@@ -270,6 +280,30 @@ static void Receive_Task(void* parameter)
 	}
 }
 
+static void Receive_Task2(void* parameter)
+{
+	BaseType_t xReturn = pdTRUE;/* 定义一个创建信息返回值，默认为 pdTRUE */
+	uint32_t r_queue; /* 定义一个接收消息的变量 */
+
+	while (1)
+	{
+		xReturn = xQueueReceive( Test_Queue, /* 消息队列的句柄 */
+								&r_queue, /* 接受的消息内容 */
+								portMAX_DELAY); /* 等待时间 一直等 */
+
+		if (xReturn == pdTRUE)
+		{
+			if (r_queue == 1)
+			{
+				HAL_GPIO_WritePin(GPIOD, LED5_Pin, GPIO_PIN_SET);
+			}
+			else
+			{
+				HAL_GPIO_WritePin(GPIOD, LED5_Pin, GPIO_PIN_RESET);
+			}
+		}
+	}
+}
 
 /* USER CODE END 4 */
 

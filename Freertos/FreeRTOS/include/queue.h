@@ -107,12 +107,12 @@ typedef void * QueueSetMemberHandle_t;
 #define queueOVERWRITE			( ( BaseType_t ) 2 )
 
 /* For internal use only.  These definitions *must* match those in queue.c. */
-#define queueQUEUE_TYPE_BASE				( ( uint8_t ) 0U )
-#define queueQUEUE_TYPE_SET					( ( uint8_t ) 0U )
-#define queueQUEUE_TYPE_MUTEX 				( ( uint8_t ) 1U )
-#define queueQUEUE_TYPE_COUNTING_SEMAPHORE	( ( uint8_t ) 2U )
-#define queueQUEUE_TYPE_BINARY_SEMAPHORE	( ( uint8_t ) 3U )
-#define queueQUEUE_TYPE_RECURSIVE_MUTEX		( ( uint8_t ) 4U )
+#define queueQUEUE_TYPE_BASE				( ( uint8_t ) 0U ) // 队列
+#define queueQUEUE_TYPE_SET					( ( uint8_t ) 0U ) // 队列集合
+#define queueQUEUE_TYPE_MUTEX 				( ( uint8_t ) 1U ) // 互斥量
+#define queueQUEUE_TYPE_COUNTING_SEMAPHORE	( ( uint8_t ) 2U ) // 计数信号量
+#define queueQUEUE_TYPE_BINARY_SEMAPHORE	( ( uint8_t ) 3U ) // 二进制信号量
+#define queueQUEUE_TYPE_RECURSIVE_MUTEX		( ( uint8_t ) 4U ) // 递归互斥量
 
 /**
  * queue. h
